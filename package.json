@@ -1,0 +1,12 @@
+{
+  "name": "tds-ga3-playwright-sum",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scrape.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.50.0"
+  }
+}
