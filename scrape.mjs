@@ -1,7 +1,6 @@
 import { chromium } from "playwright";
 
-const START_URL =
-  "https://exam.sanand.workers.dev/tds-2026-01-ga3/";
+const HUB_URL = "https://exam.sanand.workers.dev/tds-2026-01-ga3/";
 
 function extractInts(text) {
   const matches = text.match(/-?\d[\d,]*/g) || [];
@@ -9,30 +8,41 @@ function extractInts(text) {
 }
 
 async function main() {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  await page.goto(START_URL, { waitUntil: "networkidle" });
+  // Load hub page
+  await page.goto(HUB_URL, { waitUntil: "domcontentloaded" });
 
-  // Wait until seed links appear
-  await page.waitForSelector("a");
+  // Wait until any "Seed " text appears somewhere on the page (not necessarily visible)
+  await page.waitForFunction(() => document.body && document.body.innerText.includes("Seed "), null, {
+    timeout: 60000,
+  });
 
+  // Collect links whose text contains "Seed"
   const seedLinks = await page.$$eval("a", (as) =>
     as
       .map((a) => ({ text: (a.textContent || "").trim(), href: a.href }))
-      .filter((x) => /^Seed\s+\d+/i.test(x.text))
+      .filter((x) => /^Seed\s+\d+/i.test(x.text) && x.href)
   );
+
+  if (seedLinks.length === 0) {
+    // Debug print a small part of page text to logs
+    const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 500));
+    console.log("DEBUG: No seed links found. Body starts with:\n", bodyText);
+    throw new Error("No Seed links found.");
+  }
 
   let grandTotal = 0n;
 
   for (const { text, href } of seedLinks) {
-    await page.goto(href, { waitUntil: "networkidle" });
+    await page.goto(href, { waitUntil: "domcontentloaded" });
 
-    // Wait until tables load
-    await page.waitForSelector("table");
+    // Wait for tables OR just wait a bit (some pages might be slow)
+    await page.waitForTimeout(1200);
 
     const tableText = await page.$$eval("table", (tables) =>
-      tables.map((t) => t.innerText).join("\n")
+      tables.length ? tables.map((t) => t.innerText).join("\n") : ""
     );
 
     const nums = extractInts(tableText);
