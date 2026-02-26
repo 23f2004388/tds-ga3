@@ -1,10 +1,11 @@
 import { chromium } from "playwright";
 
 const BASE = "https://sanand0.github.io/tdsdata/js_table/?seed=";
-const SEEDS = [14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+const SEEDS = [43, 44, 45, 46, 47, 48, 49, 50, 51, 52];
 
-function extractInts(text) {
-  const matches = text.match(/-?\d+/g) || [];
+function extractNums(text) {
+  // ONLY positive integers (prevents accidental -50 etc.)
+  const matches = text.match(/\b\d+\b/g) || [];
   return matches.map((m) => BigInt(m));
 }
 
@@ -18,13 +19,11 @@ async function main() {
     const url = `${BASE}${seed}`;
     await page.goto(url, { waitUntil: "domcontentloaded" });
 
-    // take all text from the page (your screenshot shows numbers in plain text)
+    // This page is basically plain text numbers, so read body text
     const bodyText = await page.evaluate(() => document.body.innerText);
 
-    const nums = extractInts(bodyText);
-
-    // If page has a title like "Table", it won't affect because it has no digits.
-    const pageSum = nums.reduce((acc, v) => acc + v, 0n);
+    const nums = extractNums(bodyText);
+    const pageSum = nums.reduce((a, b) => a + b, 0n);
 
     console.log(`Seed ${seed} => ${pageSum.toString()}`);
     grandTotal += pageSum;
